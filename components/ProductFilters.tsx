@@ -1,87 +1,110 @@
 'use client'
 
-import { Product } from '@/types'
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 
 interface ProductFiltersProps {
-  products: Product[]
-  onFilter?: (filteredProducts: Product[]) => void
+  products: any[]
+  onFilteredProducts: (filteredProducts: any[]) => void
 }
 
-export default function ProductFilters({ products, onFilter }: ProductFiltersProps) {
+export default function ProductFilters({ products, onFilteredProducts }: ProductFiltersProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [selectedColor, setSelectedColor] = useState<string>('')
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000])
-  const [inStockOnly, setInStockOnly] = useState<boolean>(false)
+  const [selectedPriceRange, setSelectedPriceRange] = useState<string>('')
+  const [sortBy, setSortBy] = useState<string>('name')
+  const [searchQuery, setSearchQuery] = useState<string>('')
 
-  // Get unique values for filters
-  const categories = useMemo(() => {
-    const cats = products.map(p => p.metadata.category.value)
-    return Array.from(new Set(cats)).sort()
-  }, [products])
+  // Get unique categories from products
+  const categories = Array.from(
+    new Set(products.map(product => product.metadata.category.value))
+  ).sort()
 
-  const colors = useMemo(() => {
-    const allColors = products.flatMap(p => p.metadata.colors)
-    return Array.from(new Set(allColors)).sort()
-  }, [products])
+  // Price ranges
+  const priceRanges = [
+    { label: 'Under $200', min: 0, max: 199 },
+    { label: '$200 - $400', min: 200, max: 399 },
+    { label: '$400 - $600', min: 400, max: 599 },
+    { label: '$600+', min: 600, max: Infinity },
+  ]
 
-  const maxPrice = useMemo(() => {
-    return Math.max(...products.map(p => p.metadata.price))
-  }, [products])
+  useEffect(() => {
+    let filtered = [...products]
 
-  // Filter products based on selected filters
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      if (selectedCategory && product.metadata.category.value !== selectedCategory) {
-        return false
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(product => 
+        product.metadata.name.toLowerCase().includes(query) ||
+        product.metadata.description.toLowerCase().includes(query) ||
+        product.metadata.material?.toLowerCase().includes(query) ||
+        product.metadata.category.value.toLowerCase().includes(query)
+      )
+    }
+
+    // Filter by category
+    if (selectedCategory) {
+      filtered = filtered.filter(product => 
+        product.metadata.category.value === selectedCategory
+      )
+    }
+
+    // Filter by price range
+    if (selectedPriceRange) {
+      const range = priceRanges.find(r => r.label === selectedPriceRange)
+      if (range) {
+        filtered = filtered.filter(product => 
+          product.metadata.price >= range.min && product.metadata.price <= range.max
+        )
       }
-      if (selectedColor && !product.metadata.colors.includes(selectedColor)) {
-        return false
+    }
+
+    // Sort products
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.metadata.name.localeCompare(b.metadata.name)
+        case 'price-low':
+          return a.metadata.price - b.metadata.price
+        case 'price-high':
+          return b.metadata.price - a.metadata.price
+        case 'newest':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        default:
+          return 0
       }
-      if (product.metadata.price < priceRange[0] || product.metadata.price > priceRange[1]) {
-        return false
-      }
-      if (inStockOnly && !product.metadata.in_stock) {
-        return false
-      }
-      return true
     })
-  }, [products, selectedCategory, selectedColor, priceRange, inStockOnly])
 
-  // Call onFilter when filters change
-  useMemo(() => {
-    onFilter?.(filteredProducts)
-  }, [filteredProducts, onFilter])
+    onFilteredProducts(filtered)
+  }, [products, selectedCategory, selectedPriceRange, sortBy, searchQuery])
 
   const clearFilters = () => {
     setSelectedCategory('')
-    setSelectedColor('')
-    setPriceRange([0, maxPrice])
-    setInStockOnly(false)
+    setSelectedPriceRange('')
+    setSortBy('name')
+    setSearchQuery('')
   }
 
-  return (
-    <div className="card sticky top-24">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="font-semibold text-lg">Filters</h3>
-        <button
-          onClick={clearFilters}
-          className="text-sm text-gray-600 hover:text-gray-900 underline"
-        >
-          Clear All
-        </button>
-      </div>
+  const hasActiveFilters = selectedCategory || selectedPriceRange || searchQuery || sortBy !== 'name'
 
-      <div className="space-y-6">
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        {/* Search */}
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+          />
+        </div>
+
         {/* Category Filter */}
-        <div>
-          <label className="block font-medium text-sm text-gray-700 mb-2">
-            Category
-          </label>
+        <div className="min-w-[180px]">
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           >
             <option value="">All Categories</option>
             {categories.map(category => (
@@ -92,59 +115,45 @@ export default function ProductFilters({ products, onFilter }: ProductFiltersPro
           </select>
         </div>
 
-        {/* Color Filter */}
-        <div>
-          <label className="block font-medium text-sm text-gray-700 mb-2">
-            Color
-          </label>
+        {/* Price Range Filter */}
+        <div className="min-w-[180px]">
           <select
-            value={selectedColor}
-            onChange={(e) => setSelectedColor(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+            value={selectedPriceRange}
+            onChange={(e) => setSelectedPriceRange(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           >
-            <option value="">All Colors</option>
-            {colors.map(color => (
-              <option key={color} value={color}>
-                {color}
+            <option value="">All Prices</option>
+            {priceRanges.map(range => (
+              <option key={range.label} value={range.label}>
+                {range.label}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Price Range */}
-        <div>
-          <label className="block font-medium text-sm text-gray-700 mb-2">
-            Price Range: ${priceRange[0]} - ${priceRange[1]}
-          </label>
-          <input
-            type="range"
-            min="0"
-            max={maxPrice}
-            value={priceRange[1]}
-            onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value)])}
-            className="w-full"
-          />
+        {/* Sort By */}
+        <div className="min-w-[180px]">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="newest">Newest First</option>
+          </select>
         </div>
 
-        {/* In Stock Only */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="inStock"
-            checked={inStockOnly}
-            onChange={(e) => setInStockOnly(e.target.checked)}
-            className="rounded border-gray-300 text-black focus:ring-black"
-          />
-          <label htmlFor="inStock" className="ml-2 text-sm text-gray-700">
-            In Stock Only
-          </label>
-        </div>
-      </div>
-
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <p className="text-sm text-gray-600">
-          Showing {filteredProducts.length} of {products.length} products
-        </p>
+        {/* Clear Filters */}
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
+          >
+            Clear Filters
+          </button>
+        )}
       </div>
     </div>
   )

@@ -1,46 +1,99 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { getProducts } from '@/lib/cosmic'
-import { Suspense } from 'react'
-import ProductGrid from '@/components/ProductGrid'
 import ProductFilters from '@/components/ProductFilters'
-import { Metadata } from 'next'
+import ProductGrid from '@/components/ProductGrid'
+import { Product } from '@/types'
 
-export const metadata: Metadata = {
-  title: 'All Products - Luxe Fashion Boutique',
-  description: 'Browse our complete collection of luxury fashion pieces including dresses, tops, outerwear, and accessories.',
-}
+export default function ProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-export default async function ProductsPage() {
-  const products = await getProducts()
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        setLoading(true)
+        const fetchedProducts = await getProducts()
+        setProducts(fetchedProducts)
+        setFilteredProducts(fetchedProducts)
+      } catch (err) {
+        setError('Failed to load products')
+        console.error('Error fetching products:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
+
+  const handleFilteredProducts = (filtered: Product[]) => {
+    setFilteredProducts(filtered)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+            <p className="mt-4 text-gray-600">Loading products...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <p className="text-red-600 text-lg">{error}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-white py-8">
+    <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            All Products
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Our Products
           </h1>
-          <p className="text-lg text-gray-600">
-            Discover our complete collection of luxury fashion pieces
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Discover our complete collection of luxury fashion pieces, 
+            carefully curated for the modern woman.
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          <aside className="lg:w-64 flex-shrink-0">
-            <Suspense fallback={<div className="h-96 bg-gray-100 rounded animate-pulse"></div>}>
-              <ProductFilters products={products} />
-            </Suspense>
-          </aside>
+        <ProductFilters 
+          products={products}
+          onFilteredProducts={handleFilteredProducts}
+        />
 
-          <main className="flex-1">
-            <Suspense fallback={<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-96 bg-gray-100 rounded animate-pulse"></div>
-              ))}
-            </div>}>
-              <ProductGrid products={products} />
-            </Suspense>
-          </main>
-        </div>
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 text-lg">
+              No products found matching your criteria.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <p className="text-gray-600">
+                Showing {filteredProducts.length} of {products.length} products
+              </p>
+            </div>
+
+            <ProductGrid products={filteredProducts} />
+          </>
+        )}
       </div>
     </div>
   )
