@@ -1,22 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback } from 'react'
 
 interface ProductFiltersProps {
-  products: any[]
-  onFilteredProducts: (filteredProducts: any[]) => void
+  categories: string[]
+  currentFilters: {
+    category: string
+    priceRange: string
+    sort: string
+    search: string
+  }
 }
 
-export default function ProductFilters({ products, onFilteredProducts }: ProductFiltersProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [selectedPriceRange, setSelectedPriceRange] = useState<string>('')
-  const [sortBy, setSortBy] = useState<string>('name')
-  const [searchQuery, setSearchQuery] = useState<string>('')
-
-  // Get unique categories from products
-  const categories = Array.from(
-    new Set(products.map(product => product.metadata.category.value))
-  ).sort()
+export default function ProductFilters({ categories, currentFilters }: ProductFiltersProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Price ranges
   const priceRanges = [
@@ -26,64 +25,32 @@ export default function ProductFilters({ products, onFilteredProducts }: Product
     { label: '$600+', min: 600, max: Infinity },
   ]
 
-  useEffect(() => {
-    let filtered = [...products]
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(product => 
-        product.metadata.name.toLowerCase().includes(query) ||
-        product.metadata.description.toLowerCase().includes(query) ||
-        product.metadata.material?.toLowerCase().includes(query) ||
-        product.metadata.category.value.toLowerCase().includes(query)
-      )
-    }
-
-    // Filter by category
-    if (selectedCategory) {
-      filtered = filtered.filter(product => 
-        product.metadata.category.value === selectedCategory
-      )
-    }
-
-    // Filter by price range
-    if (selectedPriceRange) {
-      const range = priceRanges.find(r => r.label === selectedPriceRange)
-      if (range) {
-        filtered = filtered.filter(product => 
-          product.metadata.price >= range.min && product.metadata.price <= range.max
-        )
+  // Create URL with updated parameters
+  const createQueryString = useCallback(
+    (name: string, value: string) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value) {
+        params.set(name, value)
+      } else {
+        params.delete(name)
       }
-    }
+      return params.toString()
+    },
+    [searchParams]
+  )
 
-    // Sort products
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return a.metadata.name.localeCompare(b.metadata.name)
-        case 'price-low':
-          return a.metadata.price - b.metadata.price
-        case 'price-high':
-          return b.metadata.price - a.metadata.price
-        case 'newest':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        default:
-          return 0
-      }
-    })
-
-    onFilteredProducts(filtered)
-  }, [products, selectedCategory, selectedPriceRange, sortBy, searchQuery])
-
-  const clearFilters = () => {
-    setSelectedCategory('')
-    setSelectedPriceRange('')
-    setSortBy('name')
-    setSearchQuery('')
+  // Update filters
+  const updateFilter = (name: string, value: string) => {
+    const queryString = createQueryString(name, value)
+    router.push(`/products?${queryString}`)
   }
 
-  const hasActiveFilters = selectedCategory || selectedPriceRange || searchQuery || sortBy !== 'name'
+  // Clear all filters
+  const clearFilters = () => {
+    router.push('/products')
+  }
+
+  const hasActiveFilters = currentFilters.category || currentFilters.priceRange || currentFilters.search || currentFilters.sort !== 'name'
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
@@ -93,8 +60,8 @@ export default function ProductFilters({ products, onFilteredProducts }: Product
           <input
             type="text"
             placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={currentFilters.search}
+            onChange={(e) => updateFilter('search', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           />
         </div>
@@ -102,8 +69,8 @@ export default function ProductFilters({ products, onFilteredProducts }: Product
         {/* Category Filter */}
         <div className="min-w-[180px]">
           <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            value={currentFilters.category}
+            onChange={(e) => updateFilter('category', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           >
             <option value="">All Categories</option>
@@ -118,8 +85,8 @@ export default function ProductFilters({ products, onFilteredProducts }: Product
         {/* Price Range Filter */}
         <div className="min-w-[180px]">
           <select
-            value={selectedPriceRange}
-            onChange={(e) => setSelectedPriceRange(e.target.value)}
+            value={currentFilters.priceRange}
+            onChange={(e) => updateFilter('priceRange', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           >
             <option value="">All Prices</option>
@@ -134,8 +101,8 @@ export default function ProductFilters({ products, onFilteredProducts }: Product
         {/* Sort By */}
         <div className="min-w-[180px]">
           <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
+            value={currentFilters.sort}
+            onChange={(e) => updateFilter('sort', e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           >
             <option value="name">Sort by Name</option>
