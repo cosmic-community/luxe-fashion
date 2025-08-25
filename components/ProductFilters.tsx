@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface ProductFiltersProps {
   categories: string[]
@@ -16,6 +16,7 @@ interface ProductFiltersProps {
 export default function ProductFilters({ categories, currentFilters }: ProductFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [searchValue, setSearchValue] = useState(currentFilters.search)
 
   // Price ranges
   const priceRanges = [
@@ -45,15 +46,30 @@ export default function ProductFilters({ categories, currentFilters }: ProductFi
     router.push(`/products?${queryString}`)
   }
 
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      updateFilter('search', searchValue)
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [searchValue])
+
+  // Update local search value when currentFilters.search changes
+  useEffect(() => {
+    setSearchValue(currentFilters.search)
+  }, [currentFilters.search])
+
   // Clear all filters
   const clearFilters = () => {
+    setSearchValue('')
     router.push('/products')
   }
 
   const hasActiveFilters = currentFilters.category || currentFilters.priceRange || currentFilters.search || currentFilters.sort !== 'name'
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 pt-8">
       <div className="space-y-6">
         {/* Filter Header */}
         <div className="flex items-center justify-between">
@@ -76,8 +92,8 @@ export default function ProductFilters({ categories, currentFilters }: ProductFi
           <input
             type="text"
             placeholder="Search products..."
-            value={currentFilters.search}
-            onChange={(e) => updateFilter('search', e.target.value)}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent"
           />
         </div>
@@ -88,26 +104,26 @@ export default function ProductFilters({ categories, currentFilters }: ProductFi
             Category
           </label>
           <div className="space-y-2">
-            <label className="flex items-center">
+            <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
                 name="category"
                 value=""
                 checked={!currentFilters.category}
                 onChange={(e) => updateFilter('category', e.target.value)}
-                className="w-4 h-4 text-accent border-gray-300 focus:ring-accent"
+                className="w-4 h-4 text-accent border-gray-300 focus:ring-accent cursor-pointer"
               />
               <span className="ml-3 text-sm text-gray-700">All Categories</span>
             </label>
             {categories.map(category => (
-              <label key={category} className="flex items-center">
+              <label key={category} className="flex items-center cursor-pointer">
                 <input
                   type="radio"
                   name="category"
                   value={category}
                   checked={currentFilters.category === category}
                   onChange={(e) => updateFilter('category', e.target.value)}
-                  className="w-4 h-4 text-accent border-gray-300 focus:ring-accent"
+                  className="w-4 h-4 text-accent border-gray-300 focus:ring-accent cursor-pointer"
                 />
                 <span className="ml-3 text-sm text-gray-700">{category}</span>
               </label>
@@ -121,26 +137,26 @@ export default function ProductFilters({ categories, currentFilters }: ProductFi
             Price Range
           </label>
           <div className="space-y-2">
-            <label className="flex items-center">
+            <label className="flex items-center cursor-pointer">
               <input
                 type="radio"
                 name="priceRange"
                 value=""
                 checked={!currentFilters.priceRange}
                 onChange={(e) => updateFilter('priceRange', e.target.value)}
-                className="w-4 h-4 text-accent border-gray-300 focus:ring-accent"
+                className="w-4 h-4 text-accent border-gray-300 focus:ring-accent cursor-pointer"
               />
               <span className="ml-3 text-sm text-gray-700">All Prices</span>
             </label>
             {priceRanges.map(range => (
-              <label key={range.label} className="flex items-center">
+              <label key={range.label} className="flex items-center cursor-pointer">
                 <input
                   type="radio"
                   name="priceRange"
                   value={range.label}
                   checked={currentFilters.priceRange === range.label}
                   onChange={(e) => updateFilter('priceRange', e.target.value)}
-                  className="w-4 h-4 text-accent border-gray-300 focus:ring-accent"
+                  className="w-4 h-4 text-accent border-gray-300 focus:ring-accent cursor-pointer"
                 />
                 <span className="ml-3 text-sm text-gray-700">{range.label}</span>
               </label>
