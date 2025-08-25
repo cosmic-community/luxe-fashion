@@ -40,9 +40,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   ).sort()
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
+        {/* Page Header */}
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Our Products
           </h1>
@@ -52,43 +53,58 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </p>
         </div>
 
-        <Suspense fallback={<div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8 animate-pulse h-20"></div>}>
-          <ProductFilters 
-            categories={categories}
-            currentFilters={{
-              category: category || '',
-              priceRange: priceRange || '',
-              sort: sort || 'name',
-              search: search || ''
-            }}
-          />
-        </Suspense>
-
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">
-              No products found matching your criteria.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <p className="text-gray-600">
-                Showing {filteredProducts.length} of {allProducts.length} products
-              </p>
+        {/* Main Layout: Sidebar + Content */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Filters Sidebar */}
+          <aside className="lg:w-80 flex-shrink-0">
+            <div className="lg:sticky lg:top-8">
+              <Suspense fallback={
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 animate-pulse h-96"></div>
+              }>
+                <ProductFilters 
+                  categories={categories}
+                  currentFilters={{
+                    category: category || '',
+                    priceRange: priceRange || '',
+                    sort: sort || 'name',
+                    search: search || ''
+                  }}
+                />
+              </Suspense>
             </div>
+          </aside>
 
-            <Suspense fallback={
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-96 bg-gray-100 rounded animate-pulse"></div>
-                ))}
+          {/* Products Content */}
+          <main className="flex-1">
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 text-lg">
+                  No products found matching your criteria.
+                </p>
               </div>
-            }>
-              <ProductGrid products={filteredProducts} />
-            </Suspense>
-          </>
-        )}
+            ) : (
+              <>
+                {/* Results Header */}
+                <div className="flex justify-between items-center mb-6">
+                  <p className="text-gray-600">
+                    Showing {filteredProducts.length} of {allProducts.length} products
+                  </p>
+                </div>
+
+                {/* Products Grid */}
+                <Suspense fallback={
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-96 bg-gray-100 rounded animate-pulse"></div>
+                    ))}
+                  </div>
+                }>
+                  <ProductGrid products={filteredProducts} />
+                </Suspense>
+              </>
+            )}
+          </main>
+        </div>
       </div>
     </div>
   )
